@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kakaopay.api.dao.FlexDao">
+
+
+	<insert id='insertFlexDetail' parameterType='list'>
+		insert into flex_detail
+		(token, claim_id, claim_user_id, claim_amount,
+		request_user_id, room_id, is_claimed, claim_date)
+		values
+		<foreach item="item" index="index" collection = "list" separator=",">
+			(#{item.token}, #{item.claimId}, #{item.claimUserId}, #{item.claimAmount},
+			#{item.requestUserId}, #{item.roomId}, #{item.isClaimed}, current_timestamp)
+		</foreach>
+	</insert>
+
+	<insert id='insertFlex' parameterType='Flex'>
+		insert into flex
+		(token, room_id, request_user_id, share_counts, total_amount, create_date)
+		values
+		(#{token}, #{roomId}, #{requestUserId}, #{shareCounts}, #{totalAmount}, current_timestamp)
+	</insert>
+
+
+	<select id='selectFlex' resultType='FlexDateAmountWithFlag'
+		parameterType='Flex'>
+		select total_amount,create_date,
+		nvl((select sum(claim_amount) as total_claimed_amount
+			   from flex_detail
+			  where token = #{token}
+			    and is_claimed = 'Y'
+			  group by token
+			),0) total_claimed_amount,
+		case when request_user_id = #{requestUserId}
+			 then 'Y'
+		else 'N' end as request_user_flag,
+		case when create_date >= dateadd('DAY', -7, current_timestamp)
+			 then 'Y'
+		else 'N' end as create_date_flag
+		from flex
+		where token = #{token}
+		and room_id = #{roomId}
+	</select>
+
+	<select id='selectFlexDetail' resultType='FlexDetailUserAmount'
+		parameterType='Flex'>
+		select claim_user_id, claim_amount
+		from flex_detail
+		where token = #{token}
+		and room_id = #{roomId}
+		and request_user_id = #{requestUserId}
+		and is_claimed = 'Y'
+	</select>
+
+	<update id='updateFlexDetail' parameterType='FlexDetail'
+		useGeneratedKeys="true" keyColumn="claim_amount" keyProperty="claimAmount">
+		update FLEX_DETAIL
+		set is_claimed = 'Y', claim_user_id = #{claimUserId}, claim_date = current_timestamp
+		where token = #{token}
+		and room_id = #{roomId}
+		and request_user_id != #{claimUserId}
+		and is_claimed = 'N'
+		and not exists (select 1
+						from FLEX_DETAIL a
+					    where a.token = #{token}
+					    and a.room_id = #{roomId}
+						and a.is_claimed = 'Y'
+						and a.claim_user_id = #{claimUserId}
+						)
+		and claim_date >= dateadd('MINUTE', -10, current_timestamp)
+		and rownum = 1
+	</update>
+
+</mapper>
