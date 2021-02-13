@@ -30,6 +30,7 @@
 		nvl((select sum(claim_amount) as total_claimed_amount
 			   from flex_detail
 			  where token = #{token}
+			    and room_id = #{roomId}
 			    and is_claimed = 'Y'
 			  group by token
 			),0) total_claimed_amount,
