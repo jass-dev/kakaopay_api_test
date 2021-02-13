@@ -21,9 +21,9 @@ claim_date datetime
 );
 
 
-create unique index PK_FLEX on FLEX(token);
+create unique index PK_FLEX on FLEX(token, room_id);
 
-create unique index PK_FLEX_DETAIL on FLEX_DETAIL(token, claim_id);
+create unique index PK_FLEX_DETAIL on FLEX_DETAIL(token, room_id, claim_id);
 
 -- test data sample.
 
